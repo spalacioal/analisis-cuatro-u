@@ -11,3 +11,5 @@ Generan los tres entregables de `resultados/` a partir de `Resultados_encuestas_
    - `python report_ejecutivo.py` → `Informe_ejecutivo_Alianza_4U.docx`
 
 Las rutas de salida (`OUT` en cada script y `OUTD` en `charts.py`) están fijadas al entorno donde se generaron; ajústelas si ejecuta en otro equipo.
+   - `python build_pptx.py` → `Presentacion_hallazgos_Alianza_4U.pptx` (requiere `python-pptx`)
+   - `python report_subtexto.py` → `Analisis_subtexto_Alianza_4U.docx`
