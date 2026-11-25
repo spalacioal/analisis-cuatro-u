@@ -2,6 +2,9 @@
 from facts import *
 from docx_utils import Doc
 import charts
+import charts_ext
+from report_ext import add_sections
+from extend import harmonized, coverage
 
 OUT = '/projects/sandbox/analisis-cuatro-u/resultados/Informe_detallado_Alianza_4U.docx'
 FIN, NF, NP = 'Financiado', 'Postuló, no financiado', 'No postuló'
@@ -63,8 +66,9 @@ def single_short(code, col, pop, by=None):
     return t[cols]
 
 
-def build():
+def build(E1, E2):
     P = charts.build_all()
+    P.update(charts_ext.build(E1, E2))
     D = Doc()
     fin = sub('financiados')
     n_tot = len(df)
@@ -80,14 +84,18 @@ def build():
     D.p(f'La encuesta reunió {n_tot} respuestas utilizables de docentes, investigadores y directivos de las cuatro universidades de Alianza 4U. '
         f'De ellas, 45 corresponden a personas cuya propuesta fue financiada por la Alianza, 11 a personas que se postularon y no obtuvieron financiación '
         f'y 45 a personas que no se postularon. Un caso adicional se postuló pero no recuerda el resultado. '
-        f'Entre quienes se postularon y conocen el resultado, la tasa de éxito fue de 80,4 % (45 de 56).')
+        f'Entre los postulantes que respondieron y conocen su resultado, el 80,4 % fue financiado (45 de 56). Esta cifra no es la tasa de aprobación del programa: '
+        f'la encuesta cubre al 47 % de los 96 aprobados que registra la oficina de inteligencia en CTeI de EAFIT y solo a 11 rechazados. '
+        f'Todas las cifras se recalcularon desde los datos crudos y se contrastaron con las tablas de la plataforma y con la presentación de EAFIT (secciones 15 a 18).')
     D.bullets([
         ('Perfil. ', f'La muestra es paritaria según el sexo estimado por nombre (51 mujeres y 51 hombres). El 80 % es profesor de planta, el 75 % tiene más de 10 años de experiencia investigativa '
                      f'y el 75 % dedica 40 % o menos de su tiempo a investigar. Predominan Economía y negocios (25 %) e Ingeniería y tecnología (24 %).'),
         ('Disposición alta, condiciones institucionales débiles. ', f'El índice de disposición a colaborar (C1) es 4,41 sobre 5, mientras que el de condiciones institucionales (C3) es 3,36. '
                      f'Solo el {fav("C3_3")} dice que su carga de trabajo permite participar en proyectos interinstitucionales y el {fav("C3_5")} que los procedimientos administrativos lo facilitan.'),
         ('Los financiados colaboran más. ', 'Los financiados trabajaron con más tipos de instituciones (3,5 frente a 1,9 de quienes no se postularon), con más universidades 4U distintas a la propia (1,9 frente a 0,5) '
-                     'y acumularon más experiencias interinstitucionales desde 2021 (12,3 frente a 6,2). Las diferencias son significativas (p<0,01). Como la encuesta es transversal, no permite atribuir toda la diferencia a la Alianza.'),
+                     'y acumularon más experiencias interinstitucionales desde 2021 (12,3 frente a 6,2). Al emparejar por perfil, como hace EAFIT, se mantiene el efecto en colaboración con otras universidades 4U y en proyectos ejecutados con ellas; '
+                     'el efecto en publicaciones conjuntas es positivo (+18 a +28 pp) pero no concluyente, y no hay efecto en la cantidad de productos. Esto coincide con las conclusiones de EAFIT.'),
+        ('Representatividad. ', 'Los financiados encuestados reproducen la distribución por universidad de los aprobados, pero tienen más mujeres (56 % frente a 44,8 %) porque las mujeres respondieron más. Ponderar por universidad y sexo cambia los indicadores en menos de 5 puntos.'),
         ('Convocatorias bien valoradas, con puntos débiles. ', f'Los objetivos (94 % favorable) y requisitos (89 %) se consideran claros; el tiempo para preparar la propuesta (55 %) y la claridad de los procedimientos administrativos (53 %) son lo menos valorado. '
                      f'Solo el 12 % recibió retroalimentación detallada y el 7 % tuvo oportunidad de opinar sobre la convocatoria.'),
         ('Proyectos financiados con buena gobernanza. ', 'Los índices de toma de decisiones (4,36), relaciones (4,35) y coordinación (4,12) son altos. El 58 % valora que los beneficios superaron las dificultades, aunque el 53 % reporta un esfuerzo de coordinación mayor que en un proyecto de una sola universidad.'),
@@ -125,11 +133,13 @@ def build():
         ('Índices. ', 'Para cada bloque se calcula el promedio de los ítems válidos (mínimo la mitad respondidos). Todos tienen alfa de Cronbach entre 0,75 y 0,95, lo que indica consistencia interna aceptable a excelente.'),
         ('Pruebas. ', 'Kruskal-Wallis o Mann-Whitney para diferencias entre grupos; chi² con V de Cramér y prueba exacta de Fisher para asociaciones; Spearman para correlaciones. Significancia: p<0,05; tendencia: p<0,10.'),
         ('Flujo de la encuesta. ', 'Las secciones F a I se refieren al proyecto financiado y se analizan solo para los 45 financiados. Algunas personas no financiadas respondieron G (11) o I (11) por fuera del flujo previsto; esas respuestas se excluyeron.'),
+        ('Comparaciones múltiples. ', 'Con más de cien pruebas, algunas salen significativas por azar. Tras la corrección de Benjamini-Hochberg solo se mantienen dos diferencias (sección 15.3); las demás diferencias de ítems citadas con p<0,05 son exploratorias.'),
+        ('Rangos armonizados. ', 'Para comparar con la presentación de EAFIT, el sexo, el área de conocimiento, la trayectoria, el estado del proyecto y el estado de los artículos se reagruparon en los rangos de esa presentación (sección 16).'),
         ('Confidencialidad. ', 'Los informes y la base anonimizada no contienen nombres, cédulas, correos ni direcciones IP. En las citas textuales se omitieron nombres propios.'),
     ])
     D.h('2.5 Limitaciones', 2)
     D.p('La muestra es pequeña y no probabilística: 12 personas en CESA, 23 en EAFIT, 25 en ICESI y 42 en Uninorte, y solo 11 postulantes no financiados. '
-        'No se conoce el universo total invitado, por lo que no es posible calcular una tasa de respuesta sobre la población objetivo. Las diferencias deben leerse como indicativas. '
+        'No se conoce el universo total invitado, pero según EAFIT hubo 96 aprobados, así que la encuesta cubre al 47 % de ellos. Las diferencias deben leerse como indicativas. '
         'Además, la información es autorreportada y retrospectiva, y quienes tuvieron una experiencia más intensa con la Alianza pueden haber tenido más motivación para responder.')
 
     # ================================================================ 3
@@ -141,7 +151,8 @@ def build():
     D.table(pt, 'Respuestas por enlace de encuesta', font=8)
     D.p('La plataforma registró 146 inicios y 101 respuestas terminadas (69,2 % de finalización). ICESI tuvo la menor tasa de finalización (55,1 %) y la mayor duración mediana (36 minutos), '
         'lo que sugiere que el cuestionario resultó largo para una parte de su población. La duración mediana global fue de 24 minutos (mínimo 2,4 y máximo 136,5). '
-        'Todas las personas aceptaron participar (A1) y el 96 % autorizó vincular sus respuestas con registros administrativos y bibliométricos (A2).')
+        'Todas las personas aceptaron participar (A1) y el 96 % autorizó vincular sus respuestas con registros administrativos y bibliométricos (A2). '
+        'Las tablas de la plataforma incluyen 16 perfiles parciales que no están en la base exportada; su ausencia no cambia las distribuciones (sección 15.1).')
     D.img(P['grupos_uni'], 15, 'Encuestados por universidad (B4) y grupo de vinculación')
     D.table(pd.crosstab(df['Universidad'], df['Grupo'], margins=True, margins_name='Total').reset_index(), 'Encuestados por universidad y grupo', font=8)
     D.p('Uninorte aporta el 41 % de la muestra y el 42 % de los financiados (19 de 45). En las cuatro universidades, financiados y no postulantes tienen un peso casi idéntico, lo que permite comparaciones equilibradas dentro de cada una.')
@@ -152,6 +163,7 @@ def build():
     D.h('4.1 Sexo (estimado)', 2)
     D.p('Según el primer nombre, la muestra está compuesta por 51 mujeres y 51 hombres (50 % cada uno), con la misma proporción en las cuatro universidades. '
         'Por grupo, las mujeres son el 56 % de los financiados (25 de 45) y el 73 % de los postulantes no financiados (8 de 11), mientras que los hombres son el 60 % de quienes no se postularon (27 de 45). '
+        'La presentación de EAFIT registra 44,8 % de mujeres entre los 96 aprobados; la diferencia con el 56 % de la encuesta se debe a que las mujeres aprobadas respondieron más (58 % frente a 40 % de los hombres). '
         'La asociación entre sexo y grupo es marginal (chi², p=0,099). Entre postulantes, la tasa de éxito fue de 75,8 % para mujeres y 87,0 % para hombres; la diferencia no es significativa (prueba exacta de Fisher, p=0,50).')
     D.img(P['sexo'], 15, 'Sexo estimado por grupo')
     D.p('Hay diferencias de composición por sexo según el área y la función: los hombres predominan en Ingeniería y tecnología (18 de 24) y Ciencias naturales (5 de 6); las mujeres en Economía y negocios (17 de 26) y Humanidades (10 de 14). '
@@ -168,6 +180,9 @@ def build():
         'No hay diferencias significativas de experiencia entre grupos (p=0,36), aunque los no financiados tienen mayor proporción de personas con más de 20 años (45 %).')
     D.img(P['exp'], 15, 'Experiencia en investigación por grupo')
     D.table(single_short('B10', 43, 'todos', 'Grupo'), 'Años de experiencia en investigación (B10) por grupo', font=8)
+    D.p('En los rangos de la presentación de EAFIT (<10, 10-19 y 20 o más años), los financiados encuestados se distribuyen en 29 %, 44 % y 27 %, frente a 4 %, 44 % y 47 % de los aprobados según EAFIT. '
+        'La diferencia se explica porque EAFIT mide años desde el pregrado y la encuesta años de experiencia en investigación.')
+    D.table(single_short('TR', 'Trayectoria (rangos EAFIT aprox.)', 'todos', 'Grupo'), 'Trayectoria en rangos EAFIT por grupo', font=8)
 
     D.h('4.3 Vinculación, función y rango', 2)
     D.p('El 80 % es profesor de planta o tiempo completo, el 8 % de cátedra y el 7 % directivo. El 62 % combina docencia e investigación, el 19 % se dedica a dirección o gestión académica y solo el 4 % principalmente a investigar. '
@@ -181,7 +196,9 @@ def build():
     D.h('4.4 Área de conocimiento y unidad académica', 2)
     D.p('Las áreas más representadas son Economía, administración y negocios (26 personas), Ingeniería y tecnología (24), Ciencias sociales (16) y Humanidades (14). '
         'En las respuestas "Otra", aparecen Computación, Física, Matemática, Diseño, Sostenibilidad e Idiomas. Varias personas indican el Instituto de Idiomas de Uninorte como unidad. '
-        'Por tasa de éxito, Ciencias sociales es el área con menor proporción de financiación (3 de 7, 43 %), frente a 86 % en el resto de áreas; es la única diferencia de éxito estadísticamente significativa (Fisher p=0,022). Ingeniería (14 de 16) y Economía (13 de 16) superan el 80 %.')
+        'Entre los postulantes encuestados, Ciencias sociales tuvo menor proporción de financiación (3 de 7) que el resto (Fisher p=0,022). Este dato no es concluyente: son 7 personas que se clasificaron ellas mismas en el área, '
+        'y según la presentación de EAFIT, que clasifica por el título más alto, Ciencias sociales es el área con más aprobados (30,2 %).')
+    D.table(single_short('AR', 'Área (rangos EAFIT)', 'todos', 'Grupo'), 'Área de conocimiento en rangos EAFIT por grupo', font=8)
     D.img(P['area'], 14, 'Área principal de conocimiento')
     D.table(single_short('B9', 41, 'todos', 'Universidad'), 'Área de conocimiento (B9) por universidad', font=8)
 
@@ -272,6 +289,7 @@ def build():
     D.img(P['exito'], 15, 'Tasa de éxito por perfil del postulante')
     sr = success_rate()
     D.table(sr, 'Tasa de éxito por perfil (postulantes con resultado conocido)', font=7.5)
+    D.note('La tasa de éxito se calcula solo con los postulantes que respondieron la encuesta (56). No es la tasa de aprobación del programa; el intervalo de confianza al 95 % va de 68 % a 89 %.')
     D.p('Por universidad, la tasa de éxito es similar en EAFIT (84,6 %), ICESI (84,6 %) y Uninorte (82,6 %), y menor en CESA (57,1 %, 4 de 7). '
         'Con tan pocos casos en CESA, la diferencia no es estadísticamente significativa (Fisher p=0,13).')
 
@@ -284,7 +302,8 @@ def build():
     D.img(P['lk_E5'], 16, 'E5. Valoración del proceso (postulantes)')
     D.table(compact_items('E5'), 'E5. Estadísticos por ítem', font=7.5)
     D.p('Los no financiados valoran peor la convocatoria. Las diferencias son significativas en la claridad de los requisitos (4,66 frente a 4,00; p=0,02), la comprensión y transparencia de los criterios de evaluación (4,49 frente a 3,78; p=0,01), '
-        'el favorecimiento de equipos complementarios (4,35 frente a 3,70; p=0,02) y la claridad de la comunicación de la decisión (4,39 frente a 3,75; p=0,04).')
+        'el favorecimiento de equipos complementarios (4,35 frente a 3,70; p=0,02) y la claridad de la comunicación de la decisión (4,39 frente a 3,75; p=0,04). '
+        'Ninguna de estas diferencias se mantiene tras corregir por comparaciones múltiples, porque los no financiados son solo 11; la dirección es consistente en todos los ítems.')
     D.img(P['e_compare'], 15, 'Valoración de la convocatoria: financiados frente a no financiados')
 
     D.h('7.3 Retroalimentación y participación en la mejora (E6, E7)', 2)
@@ -448,6 +467,7 @@ def build():
     D.p('Las cuatro universidades tienen perfiles parecidos en la mayoría de índices; ninguna diferencia de índice entre universidades es significativa al 5 %. Las diferencias de ítem más notables son: '
         'CESA valora menos la utilidad de la colaboración (C1.1) y el sentido de comunidad (C1.4); EAFIT valora menos la formalización del proyecto (E5.8); ICESI percibe menos respuesta a problemáticas relevantes (I1.8: 3,27 frente a 4,50 de CESA y 4,07 de Uninorte; p=0,04). '
         'Uninorte tiene los valores más altos en la mayoría de índices de los proyectos financiados (F2, F3, F4, G3, H3).')
+    D.note('Ninguna de las diferencias de ítem por universidad, sexo o experiencia se mantiene tras la corrección de Benjamini-Hochberg (sección 15.3).')
     D.img(P['idx_uni'], 15, 'Índices por universidad')
     t = index_by('Universidad')
     t = t[['Índice', 'Dimensión'] + [f'{u} media' for u in UNIS] + ['p-valor']]
@@ -498,9 +518,10 @@ def build():
                '"La publicación de un artículo científico de alto impacto [...] la vinculación de una investigadora postdoctoral y la financiación externa adicional de un centro de investigación internacional."'])
 
     # ================================================================ 15
+    add_sections(D, P, E1, E2)
     D.pagebreak()
-    D.h('15. Conclusiones y recomendaciones', 1)
-    D.h('15.1 Conclusiones', 2)
+    D.h('20. Conclusiones y recomendaciones', 1)
+    D.h('20.1 Conclusiones', 2)
     D.bullets([
         'La Alianza llega a una comunidad con alta disposición a colaborar, pero con condiciones institucionales que limitan esa colaboración, en particular la carga de trabajo y los procedimientos administrativos.',
         'Quienes fueron financiados muestran más colaboración con las otras universidades 4U, más actividades conjuntas y mayor intención de volver a colaborar y liderar. Los participantes atribuyen buena parte de esto a la Alianza (alta adicionalidad percibida), aunque el diseño transversal no permite separar el efecto de la Alianza del perfil previo.',
@@ -509,8 +530,11 @@ def build():
         'La gobernanza interna de los proyectos es buena y se asocia con mejores resultados. La institucionalización es el punto débil: más de una cuarta parte de los proyectos dependió de acuerdos personales y no continuó tras la financiación.',
         'La producción es principalmente académica y todavía en curso: la mayoría de artículos está en desarrollo. La interacción con entidades públicas y empresas es escasa y los cambios en prácticas o decisiones son el efecto menos observado.',
         'Los equipos no financiados tienden a disolverse.',
+        'La encuesta y la presentación de EAFIT llegan a conclusiones compatibles: la Alianza aumenta la colaboración y probablemente la publicación conjunta, pero no la cantidad de productos.',
+        'Las cifras de la encuesta son consistentes con las tablas de la plataforma y robustas a la ponderación por universidad y sexo. Casi todas las diferencias por universidad, sexo y experiencia son exploratorias.',
+        'Hay 27 personas que no se han postulado y tienen intención de colaborar: el grupo con más potencial para nuevas convocatorias.',
     ])
-    D.h('15.2 Recomendaciones derivadas de los datos', 2)
+    D.h('20.2 Recomendaciones derivadas de los datos', 2)
     D.bullets([
         ('Descarga académica. ', 'Acordar entre las cuatro universidades horas de descarga o reconocimiento en el plan de trabajo por participar en proyectos 4U (barrera del 77 %; C3.3 con 26 % favorable).'),
         ('Ventanilla administrativa común. ', 'Unificar calendarios de cierre, formatos y trámites contractuales entre universidades (J5 41 %; J6 24 %; C3.5 con 33 % favorable).'),
@@ -519,8 +543,9 @@ def build():
         ('Apoyo a equipos no financiados. ', 'Ofrecer capital semilla, acompañamiento para re-postular o conexión con otras fuentes, para que la red formada no se pierda (5 de 8 equipos dejaron de trabajar juntos).'),
         ('Fondos de continuidad y cierre de productos. ', 'Financiar la culminación de artículos y la continuidad de redes después del proyecto (55 % de artículos en desarrollo; 28 % sin continuidad de la colaboración).'),
         ('Vinculación con usuarios. ', 'Incluir en los términos de referencia la participación temprana de entidades públicas, empresas y comunidades, y recursos para pilotos y transferencia (H5: 3 % de uso por entidades públicas y empresas).'),
-        ('Ampliar temas. ', 'Evaluar una modalidad abierta o de creación para áreas hoy menos representadas, como las artes y Ciencias sociales (J6 26 %; tasa de éxito de Ciencias sociales 43 %).'),
-        ('Seguimiento de producción. ', 'Usar la autorización de vinculación de datos (96 %) para medir con bases bibliométricas la producción real y validar las estimaciones de este informe.'),
+        ('Ampliar temas. ', 'Evaluar una modalidad abierta o de creación para temas fuera de las líneas priorizadas y para las artes (J6: 26 % pide ampliar temas y áreas).'),
+        ('Captar postulantes potenciales. ', 'Contactar a los 27 no postulantes con intención de colaborar, en su mayoría hombres y de Uninorte, con información directa y apoyo para encontrar socios.'),
+        ('Integrar las dos fuentes. ', 'Usar la autorización de vinculación de datos (96 %) para unir la encuesta con la base de EAFIT y analizar si las percepciones (gobernanza, barreras) explican las diferencias de producción del event study.'),
     ])
 
     # ================================================================ Anexos
@@ -549,4 +574,6 @@ def build():
 
 
 if __name__ == '__main__':
-    build()
+    E1 = pd.read_pickle('/projects/sandbox/work/eff_todos.pkl')
+    E2 = pd.read_pickle('/projects/sandbox/work/eff_rechazados.pkl')
+    build(E1, E2)

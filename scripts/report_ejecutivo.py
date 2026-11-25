@@ -2,12 +2,15 @@
 from facts import *
 from docx_utils import Doc
 import charts
+import charts_ext
+from extend import harmonized
 
 OUT = '/projects/sandbox/analisis-cuatro-u/resultados/Informe_ejecutivo_Alianza_4U.docx'
 
 
-def build():
+def build(E1, E2):
     P = charts.build_all()
+    P.update(charts_ext.build(E1, E2))
     D = Doc()
     D.cover('Alianza 4U: resultados de la línea de investigación',
             'Informe ejecutivo de la encuesta a docentes e investigadores',
@@ -16,7 +19,7 @@ def build():
     D.h('1. Cifras clave', 1)
     D.kpis([('102', 'personas encuestadas en las 4 universidades'),
             ('45 / 11 / 45', 'financiados / postularon sin éxito / no postularon'),
-            ('80 %', 'tasa de éxito de las postulaciones (45 de 56)'),
+            ('47 %', 'de los 96 aprobados (según EAFIT) respondió la encuesta'),
             ('50 % / 50 %', 'mujeres / hombres (estimado por nombre)'),
             ('75 %', 'con más de 10 años de experiencia investigativa'),
             ('75 %', 'dedica 40 % o menos de su tiempo a investigar'),
@@ -60,15 +63,16 @@ def build():
         ['Probable o muy probable liderar (J2)', '65 %', '36 %', '45 %', '<0,001*'],
     ], columns=['Indicador', 'Financiados', 'No financiados', 'No postularon', 'p-valor']),
         'Colaboración e intención futura por grupo (* financiados frente al resto)', font=8.5)
-    D.p('La diferencia es coherente con un efecto de la Alianza, que los propios financiados confirman (ver 3.5). Sin embargo, la encuesta es transversal y los financiados ya conocían mejor la Alianza, por lo que parte de la diferencia puede deberse al perfil previo. '
-        'La experiencia previa en proyectos interinstitucionales no difiere entre grupos, y 18 de los 20 postulantes sin esa experiencia fueron financiados.')
+    D.p('Para separar el efecto de la Alianza del perfil previo, emparejé a cada financiado con una persona parecida (sexo, experiencia, dedicación, rango, área, universidad y proyectos antes de 2021), igual que hace EAFIT. '
+        'Con el ajuste se mantiene el efecto en colaboración con otras universidades 4U y en proyectos ejecutados con ellas. El efecto en publicaciones conjuntas es positivo (+18 a +28 puntos) pero no concluyente, y no hay efecto en la cantidad de productos. '
+        'Estas conclusiones coinciden con el event study de EAFIT: más probabilidad de publicar y de tener coautores externos, sin más productos.')
+    D.img(P['eff'], 15, 'Efecto ajustado de ser financiado')
 
     D.h('3.3 Convocatorias: claras, pero con poco tiempo y poca retroalimentación', 2)
     D.p('Los objetivos (94 % favorable), los requisitos (89 %) y los criterios de evaluación (88 %) se consideran claros. Lo menos valorado es el tiempo para preparar la propuesta (55 %) y la claridad de los procedimientos administrativos (53 %). '
         'Solo el 12 % recibió retroalimentación detallada y solo 3 de 45 personas pudieron opinar sobre la convocatoria. Los no financiados valoran peor los criterios de evaluación (3,78 frente a 4,49) y la comunicación de la decisión (3,75 frente a 4,39). '
         'De 8 equipos no financiados que informaron qué pasó, 5 dejaron de trabajar juntos.')
-    D.p('Ciencias sociales tuvo una tasa de éxito de 43 % (3 de 7), frente a 86 % en las demás áreas. Es la única diferencia de éxito significativa (p=0,02). CESA tuvo 57 % (4 de 7), sin diferencia significativa.')
-    D.img(P['exito'], 14, 'Tasa de éxito por perfil del postulante')
+    D.p('Entre los postulantes encuestados, el 80 % fue financiado (45 de 56; intervalo de 68 % a 89 %). No es la tasa de aprobación del programa, porque la encuesta incluye solo 11 rechazados.')
 
     D.h('3.4 Proyectos financiados: buena gobernanza, institucionalización débil', 2)
     D.p('El 91 % sabía quién tomaba las decisiones y el 86 % considera que las capacidades de las instituciones fueron complementarias. El 53 % reporta más esfuerzo de coordinación que en un proyecto de una sola universidad, pero el 58 % considera que los beneficios superaron las dificultades. '
@@ -94,6 +98,13 @@ def build():
         'En las respuestas abiertas, las propuestas más frecuentes son ampliar temas y áreas (26 %), unificar procesos administrativos (24 %) y conocer los perfiles de investigadores de las otras universidades (22 %).')
     D.img(P['mu_J4'], 15, 'Principales barreras para participar, por grupo')
 
+    D.h('3.8 Comparación con la presentación de EAFIT', 2)
+    D.p('Con rangos armonizados, la encuesta reproduce la distribución por universidad de los aprobados (diferencias menores de 5 puntos). Tiene más mujeres (56 % frente a 44,8 %) porque ellas respondieron más (58 % frente a 40 %); ponderar por universidad y sexo cambia los indicadores en menos de 5 puntos. '
+        'Área, trayectoria, estado de proyectos y artículos difieren porque se miden distinto: EAFIT clasifica por el título más alto, cuenta años desde el pregrado y usa evidencia documental por proyecto, mientras la encuesta recoge lo que dice cada persona.')
+    D.img(P['harm'], 15, 'Encuesta frente a presentación de EAFIT (rangos armonizados)')
+    D.h('3.9 Verificación', 2)
+    D.p('Recalculé 37 cifras de los informes desde los datos crudos y todas coinciden. Contrasté 3.640 celdas con las tablas de la plataforma: el 88 % coincide y el resto difiere solo porque la plataforma incluye 16 perfiles parciales no exportados, sin efecto en las distribuciones. '
+        'Tras corregir por comparaciones múltiples, solo se mantienen las diferencias entre grupos en propuestas y proyectos con otra universidad; las diferencias por universidad, sexo y experiencia son exploratorias.')
     D.h('4. Recomendaciones', 1)
     D.table(pd.DataFrame([
         ['1', 'Descarga académica acordada entre las 4 universidades para proyectos 4U', '77 % cita falta de tiempo; 26 % dice que su carga lo permite'],
@@ -103,16 +114,19 @@ def build():
         ['5', 'Apoyo a equipos no financiados (semilla o re-postulación)', '5 de 8 equipos no financiados se disolvieron'],
         ['6', 'Fondo de cierre de productos y continuidad de redes', '55 % de artículos en desarrollo; 28 % sin continuidad'],
         ['7', 'Exigir y financiar la vinculación temprana de usuarios externos', '3 % de uso por entidades públicas y empresas'],
-        ['8', 'Modalidad abierta para áreas menos representadas', 'Éxito de Ciencias sociales: 43 %; 26 % pide ampliar temas'],
-        ['9', 'Medir producción real con datos bibliométricos', '96 % autorizó la vinculación de sus datos'],
+        ['8', 'Modalidad abierta para temas fuera de las líneas priorizadas', '26 % pide ampliar temas y áreas'],
+        ['9', 'Contactar a los 27 no postulantes con intención de colaborar', '16 de ellos solo habían recibido información'],
+        ['10', 'Unir la encuesta con la base bibliométrica de EAFIT', '96 % autorizó la vinculación de sus datos'],
     ], columns=['#', 'Recomendación', 'Evidencia']), 'Recomendaciones y evidencia que las sustenta', font=8.5, widths=[0.8, 8, 7.5])
     D.h('5. Nota metodológica', 1)
     D.p('Base: 102 registros únicos (97 completos) de las exportaciones de CESA, EAFIT, ICESI y Uninorte. Grupos definidos por la pregunta E2. Escalas codificadas de 1 a 5; se excluyen "No sabe" y "No aplica". '
-        'Pruebas no paramétricas (Kruskal-Wallis, Mann-Whitney, Fisher, Spearman). La muestra es pequeña y no probabilística, por lo que las diferencias son indicativas. '
+        'Pruebas no paramétricas con corrección de Benjamini-Hochberg, intervalos de Wilson y bootstrap, y emparejamiento por puntaje de propensión. La muestra es pequeña y no probabilística, por lo que las diferencias son indicativas. '
         'El detalle completo está en el Informe técnico detallado y en el libro de Excel de estadísticas.', size=9)
     D.save(OUT)
     print('ok', OUT, D.fig_n, D.tab_n)
 
 
 if __name__ == '__main__':
-    build()
+    E1 = pd.read_pickle('/projects/sandbox/work/eff_todos.pkl')
+    E2 = pd.read_pickle('/projects/sandbox/work/eff_rechazados.pkl')
+    build(E1, E2)

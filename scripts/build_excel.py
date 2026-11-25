@@ -2,11 +2,12 @@
 import numpy as np
 import pandas as pd
 from analysis import *
+from extend import *
 
 OUT = '/projects/sandbox/analisis-cuatro-u/resultados/Estadisticas_Alianza_4U.xlsx'
 
 
-def build():
+def build(E1, E2):
     W = pd.ExcelWriter(OUT, engine='xlsxwriter')
     wb = W.book
     f_title = wb.add_format({'bold': True, 'font_size': 14, 'font_color': '#1F3864'})
@@ -77,7 +78,8 @@ def build():
         ('Financiados (aprobados)', int((df['Grupo'] == 'Financiado').sum())),
         ('Postularon y no fueron financiados', int((df['Grupo'] == 'Postuló, no financiado').sum())),
         ('No postularon', int((df['Grupo'] == 'No postuló').sum())),
-        ('Tasa de éxito entre postulantes con resultado conocido (%)', round(pct(45, 56), 1)),
+        ('Éxito entre postulantes ENCUESTADOS con resultado conocido (%) (no es la tasa del programa)', round(pct(45, 56), 1)),
+        ('Cobertura de la encuesta sobre los 96 aprobados (EAFIT) %', 46.9),
         ('Mujeres (estimado) %', round(pct((df['Sexo (estimado)'] == 'Mujer').sum(), len(df)), 1)),
         ('Profesores de planta o tiempo completo %', round(pct((df[35] == 'Profesor(a) de planta o tiempo completo.').sum(), len(df)), 1)),
         ('Con más de 10 años de experiencia en investigación %', round(pct(df[43].isin(['Entre 11 y 20 años.', 'Más de 20 años.']).sum(), df[43].notna().sum()), 1)),
@@ -239,16 +241,55 @@ def build():
                              ('Autorización de vinculación de datos (A2)', df[27].value_counts().reset_index(), None)],
         'Calidad y completitud de los datos')
 
-    # ---------------- 18 base anonimizada
+    # ---------------- 19-25 ampliación
+    vs, pq = verification_summary()
+    vt = pd.read_pickle('/projects/sandbox/work/verify.pkl')
+    vt = vt[vt['n base exportada'].notna() & (vt['Diferencia'] != 0)]
+    put('18_Verificacion', [
+        ('Coincidencia entre base exportada y tablas de la plataforma', vs, 'Celdas = categoría × pregunta × universidad. La plataforma incluye respuestas parciales no exportadas.'),
+        ('Diferencia (plataforma − base) por pregunta de respuesta única', pq, None),
+        ('Perfil: plataforma (118) frente a base exportada (102)', platform_profile(), None),
+        ('Cifras de los informes recalculadas desde los datos crudos', claims(), None),
+        ('Detalle de celdas con diferencia', vt, None)], 'Verificación de los datos')
+    H = harmonized()
+    put('19_Comparacion_EAFIT', [
+        ('Encuesta (financiados) frente a la presentación de EAFIT con rangos armonizados', H, 'Ver columna Nota: varias variables no miden lo mismo.'),
+        ('Trayectoria EAFIT en rangos originales (% de aprobados)', pd.DataFrame(list(EAFIT['tray_fino'].items()), columns=['Rango (años desde pregrado)', '%']), None),
+        ('Resultados de impacto de EAFIT', pd.DataFrame(EAFIT['impacto'], columns=['Resultado', 'Efecto', 'IC 95 %', 'p']), None),
+        ('Área (rangos EAFIT) por grupo – encuesta', single_table('AR', 'Área (rangos EAFIT)', 'Grupo'), None),
+        ('Trayectoria (rangos EAFIT) por grupo – encuesta', single_table('TR', 'Trayectoria (rangos EAFIT aprox.)', 'Grupo'), None),
+        ('Sexo (rangos EAFIT) por grupo – encuesta', single_table('SXE', 'Sexo (rangos EAFIT)', 'Grupo', order=['Mujeres', 'Hombres', 'No informado']), None),
+        ('Área (rangos EAFIT) por universidad – encuesta', single_table('AR', 'Área (rangos EAFIT)', 'Universidad'), None)],
+        'Comparación con la presentación de la oficina de inteligencia en CTeI de EAFIT')
+    wi, wt = weighted_indicators()
+    put('20_Representatividad', [('Cobertura sobre los 96 aprobados', coverage(), None),
+                                 ('Indicadores de financiados sin ponderar y ponderados (raking por universidad y sexo)', wi, None),
+                                 ('Pesos', wt, None)], 'Representatividad y ponderación')
+    put('21_Efecto_ajustado', [
+        ('Estrategia 1: todos los no financiados como controles', E1, 'ATT por emparejamiento 1:1 con reemplazo, exacto por universidad; IC bootstrap (500). MCO con errores robustos HC1. pp para resultados binarios.'),
+        ('Estrategia 2: postulantes rechazados como controles', E2, None),
+        ('Balance de covariables – estrategia 1', balance('todos'), 'DME = diferencia de medias estandarizada; |DME|<0,25 se considera aceptable.'),
+        ('Balance de covariables – estrategia 2', balance('rechazados'), None)], 'Efecto ajustado de ser financiado')
+    put('22_Comparaciones_multiples', [('Todas las pruebas de ítems con corrección de Benjamini-Hochberg', multiple_testing(), None)],
+        'Corrección por comparaciones múltiples')
+    put('23_Intervalos_confianza', [('Intervalos de confianza al 95 %', ci_table(), 'Wilson para proporciones; bootstrap (2.000) para índices.')],
+        'Intervalos de confianza de las cifras principales')
+    a_, prof, bar = potential()
+    put('24_Postulantes_potenciales', [('Conteos', a_, None), ('Perfil (n=27)', prof, None), ('Barreras y prioridades', bar, None)],
+        'No postulantes con intención de colaborar')
+
+    # ---------------- 26 base anonimizada
     base = anonymized_base()
-    base.to_excel(W, sheet_name='18_Base_anonimizada', index=False)
-    ws = W.sheets['18_Base_anonimizada']
+    for c in ['Área (rangos EAFIT)', 'Trayectoria (rangos EAFIT aprox.)', 'Sexo (rangos EAFIT)', 'Estado proyecto (rangos EAFIT)', 'Artículos (rangos EAFIT)']:
+        base[c] = df[c].values
+    base.to_excel(W, sheet_name='25_Base_anonimizada', index=False)
+    ws = W.sheets['25_Base_anonimizada']
     for j, c in enumerate(base.columns):
         ws.write(0, j, str(c), f_hdr)
     ws.set_row(0, 60)
     ws.set_column(0, len(base.columns), 18)
     ws.freeze_panes(1, 1)
-    index_rows.append(('18_Base_anonimizada', 'Base de datos unificada y anonimizada (una fila por persona)'))
+    index_rows.append(('25_Base_anonimizada', 'Base de datos unificada y anonimizada (una fila por persona)'))
 
     # ---------------- índice
     ws = wb.add_worksheet('Indice')
@@ -268,4 +309,6 @@ def build():
 
 
 if __name__ == '__main__':
-    build()
+    E1 = pd.read_pickle('/projects/sandbox/work/eff_todos.pkl')
+    E2 = pd.read_pickle('/projects/sandbox/work/eff_rechazados.pkl')
+    build(E1, E2)
